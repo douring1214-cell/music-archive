@@ -4,10 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TODAY MUSIC - 실시간 공유</title>
-<!-- Firebase & SheetJS SDK -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#fdf8fa;color:#2b2330;font-family:Arial,"Malgun Gothic",sans-serif}
@@ -23,8 +22,6 @@ button{cursor:pointer;border:0}
 .ghost{background:#fff;border:1px solid #eccbe3;color:#80386b;border-radius:10px;padding:11px 15px;font-weight:600}
 .login-box{max-width:400px;margin:80px auto;padding:35px;background:#fff;border:1px solid #f5dbeb;border-radius:20px;text-align:center;box-shadow:0 10px 30px rgba(189,59,142,0.1)}
 .login-box h2{color:#381d35;margin-top:0}.login-box input{width:100%;margin:15px 0;text-align:center;font-size:18px;letter-spacing:4px}
-.drop-zone{border:2px dashed #d63993;background:#fff0f7;border-radius:16px;padding:20px;text-align:center;color:#80386b;font-weight:700;margin:15px 0;transition:0.2s;cursor:pointer}
-.drop-zone.hover{background:#f8d8eb;border-color:#9132be}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:18px 0}
 .stat{background:#ffffff;border:1px solid #f5dbeb;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(189,59,142,0.04)}
 .stat small{color:#855d78;font-weight:600}
@@ -38,10 +35,11 @@ input:focus,select:focus{border-color:#b353a2;box-shadow:0 0 0 2px rgba(179,83,1
 .info{color:#855d78;font-size:13px;margin:10px 2px 15px;font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:17px}
 .card{background:#fff;border:1px solid #f5dbeb;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(189,59,142,0.06)}
-.cover{height:185px;display:block;position:relative;background:linear-gradient(135deg,#f8e3f1,#ebd1f7);text-decoration:none}
-.cover img{width:100%;height:100%;object-fit:cover}
+.cover{height:185px;display:block;position:relative;background:linear-gradient(135deg,#f8e3f1,#ebd1f7);text-decoration:none;cursor:pointer}
+.cover img{width:100%;height:100%;object-fit:cover;transition:0.2s}
+.cover:hover img{transform:scale(1.03)}
 .noimg{height:100%;display:grid;place-items:center;color:#d49bc7;font-size:55px}
-.badge{position:absolute;right:10px;top:10px;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:800}
+.badge{position:absolute;right:10px;top:10px;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:800;z-index:2}
 .badge.sent{color:#781c62;background:#fae3f3;border:1px solid #eed0e7}
 .badge.no{color:#b82a4d;background:#ffe8ee;border:1px solid #f8cad6}
 .body{padding:14px}
@@ -79,13 +77,6 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <main class="app" id="appScreen" style="display:none">
 <div class="top">
   <div class="logo"><small>LIVE ARCHIVE</small><h1>TODAY <span>MUSIC</span></h1></div>
-  <div><button class="ghost" onclick="downloadXlsx()">엑셀로 저장</button></div>
-</div>
-
-<!-- 기존 목록 엑셀 파일 업로드 영역 -->
-<div class="drop-zone" id="dropZone" onclick="$('fileInput').click()">
-  📁 기존 정리했던 엑셀 파일(.xlsx)을 여기에 끌어다 놓거나 클릭해서 불러오세요!
-  <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileSelect(event)">
 </div>
 
 <section class="stats">
@@ -112,12 +103,12 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <h2 id="dlgTitle">노래 추가</h2>
 <div class="form">
 <div class="row">
-  <div><label>연 / 월 (시트명)</label><input id="fSheet" placeholder="26.09"></div>
+  <div><label>연 / 월</label><input id="fSheet" placeholder="26.09"></div>
   <div><label>날짜</label><input id="fDate" placeholder="2026. 9. 1." oninput="autoSentByDate()"></div>
 </div>
 <div><label>가수 / OST</label><input id="fArtist" placeholder="가수명 입력"></div>
-<div><label>곡명 / 제목 (필수)</label><input id="fTitle" placeholder="노래 제목 입력"></div>
-<div><label>노래 링크</label><input id="fLink" placeholder="유튜브 링크" oninput="autoThumb()"></div>
+<div><label>곡명 / 제목</label><input id="fTitle" placeholder="노래 제목 입력"></div>
+<div><label>유튜브 링크</label><input id="fLink" placeholder="유튜브 링크" oninput="autoThumb()"></div>
 <div><label>썸네일 링크</label><input id="fThumb" placeholder="자동 생성 또는 직접 입력"></div>
 <div><label>발송 상태</label><select id="fSent"><option value="yes">발송</option><option value="no">미발송</option></select></div>
 </div><div class="foot"><button class="ghost" onclick="$('dlg').close()">취소</button><button class="primary" onclick="saveSong()">저장</button></div>
@@ -125,7 +116,7 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 
 <script>
 const SHARED_PASSWORD = "0609"; 
-const BASE_DATE = new Date(2026, 8, 1); // 기준 날짜: 2026년 9월 1일
+const BASE_DATE = new Date(2026, 8, 1);
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdfUmusky4eyHvjmUPVATxHehZVyFOkZs",
@@ -151,7 +142,6 @@ function checkPassword() {
     $("authScreen").style.display = "none";
     $("appScreen").style.display = "block";
     initRealtimeListener();
-    setupDragAndDrop();
   } else {
     alert("비밀번호가 올바르지 않습니다.");
   }
@@ -171,7 +161,6 @@ function parseDateString(dateStr) {
   return new Date(parseInt(nums[0],10), parseInt(nums[1],10)-1, parseInt(nums[2],10));
 }
 
-// 기존 DB의 잘못된 썸네일 및 발송상태 자동 교정 기능
 function fixExistingData(dataList) {
   let updates = {};
   let needFix = false;
@@ -181,14 +170,12 @@ function fixExistingData(dataList) {
     let expectedThumb = youtubeThumb(item.link);
     let itemDate = parseDateString(item.date);
     
-    // 1. 썸네일 복구
     if (!item.thumb && expectedThumb) {
       updates[`${key}/thumb`] = expectedThumb;
       item.thumb = expectedThumb;
       needFix = true;
     }
     
-    // 2. 2026. 9. 1. 이전 곡 자동 '발송' 교정 (8월 포함 이전 시트곡)
     let isBeforeBase = (itemDate.getTime() > 0 && itemDate < BASE_DATE) || (item.sheet && parseFloat(item.sheet) < 26.09);
     if (isBeforeBase && !item.sent) {
       updates[`${key}/sent`] = true;
@@ -210,83 +197,12 @@ function initRealtimeListener() {
       Object.keys(data).forEach(key => {
         rows.push({ _key: key, ...data[key] });
       });
-      fixExistingData(rows); // 기존 저장 데이터 자동 교정 실행
+      fixExistingData(rows);
     }
     buildMonths();
     render();
     $("info").textContent = `🟢 실시간 연결됨 · 총 ${rows.length}곡 저장되어 있음`;
   });
-}
-
-function setupDragAndDrop(){
-  let dz = $("dropZone");
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eName => {
-    dz.addEventListener(eName, e => { e.preventDefault(); e.stopPropagation(); }, false);
-  });
-  ['dragenter', 'dragover'].forEach(eName => dz.classList.add('hover'));
-  ['dragleave', 'drop'].forEach(eName => dz.classList.remove('hover'));
-  dz.addEventListener('drop', e => {
-    let dt = e.dataTransfer;
-    let files = dt.files;
-    if (files.length) processExcelFile(files[0]);
-  });
-}
-
-function handleFileSelect(e){
-  if(e.target.files.length) processExcelFile(e.target.files[0]);
-}
-
-function processExcelFile(file){
-  let reader = new FileReader();
-  reader.onload = function(e){
-    try {
-      let data = new Uint8Array(e.target.result);
-      let workbook = XLSX.read(data, {type: 'array'});
-      let count = 0;
-
-      workbook.SheetNames.forEach(sheetName => {
-        let sheet = workbook.Sheets[sheetName];
-        let json = XLSX.utils.sheet_to_json(sheet, {header: 1});
-        
-        json.forEach((row, idx) => {
-          if (idx < 4) return;
-          let dateStr = clean(row[1]);
-          let artist = clean(row[2]);
-          let title = clean(row[3]);
-          let link = clean(row[4]);
-          let thumb = clean(row[5]);
-          let sentStr = clean(row[6]);
-
-          if (title) {
-            let itemDate = parseDateString(dateStr);
-            let isSent = false;
-            if(sentStr) {
-              isSent = sentStr.includes("발송") && !sentStr.includes("미발송");
-            } else if(itemDate.getTime() > 0) {
-              isSent = itemDate < BASE_DATE;
-            } else if(parseFloat(sheetName) < 26.09) {
-              isSent = true;
-            }
-
-            db.push({
-              sheet: sheetName,
-              date: dateStr,
-              artist: artist,
-              title: title,
-              link: link,
-              thumb: thumb || youtubeThumb(link),
-              sent: isSent
-            });
-            count++;
-          }
-        });
-      });
-      alert(`성공! 총 ${count}개의 노래를 엑셀에서 불러왔습니다.`);
-    } catch(err) {
-      alert("엑셀 파일을 읽는 도중 오류가 발생했습니다.");
-    }
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 function autoSentByDate(){
@@ -321,7 +237,7 @@ function render(){
  let s=$("sort").value;
  v.sort((a,b)=>{
    if(s==="new") return parseDateString(b.date).getTime() - parseDateString(a.date).getTime();
-   if(s==="old") return parseDateString(a.date).getTime() - parseDateString(a.date).getTime();
+   if(s==="old") return parseDateString(a.date).getTime() - parseDateString(b.date).getTime();
    if(s==="artist") return (a.artist||"").localeCompare(b.artist||"","ko");
    return (a.title||"").localeCompare(b.title||"","ko");
  });
@@ -333,7 +249,10 @@ function render(){
 function card(x){
  let realIndex = rows.indexOf(x);
  let th=x.thumb||youtubeThumb(x.link), image=th?`<img loading="lazy" src="${esc(th)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="noimg" style="display:none">♫</div>`:'<div class="noimg">♫</div>';
- let cover=x.link?`<a class="cover" href="${esc(x.link)}" target="_blank" rel="noopener">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></a>`:`<div class="cover">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></div>`;
+ 
+ // 썸네일/카드 이미지 클릭 시 유튜브 링크 이동
+ let cover=x.link?`<a class="cover" href="${esc(x.link)}" target="_blank" rel="noopener" title="유튜브로 이동">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></a>`:`<div class="cover">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></div>`;
+ 
  return `<article class="card">${cover}<div class="body"><div class="title" title="${esc(x.title)}">${esc(x.title)}</div><div class="artist">${esc(x.artist||"가수 없음")}</div><div class="meta"><span class="date">${esc(x.date||x.sheet||"-")}</span><span class="actions">${x.link?`<a class="play" href="${esc(x.link)}" target="_blank">▶ 듣기</a>`:""}<button class="edit" onclick="editSong(${realIndex})">수정</button><button class="del" onclick="deleteSong(${realIndex})">삭제</button></span></div></div></article>`;
 }
 
@@ -371,7 +290,7 @@ function deleteSong(i){
 
 function saveSong(){
  let title = clean($("fTitle").value);
- if(!title){ alert("노래 제목을 입력해 주세요. (곡명이 없는 항목은 추가할 수 없습니다)"); return; }
+ if(!title){ alert("노래 제목을 입력해 주세요."); return; }
 
  let d={
    sheet: clean($("fSheet").value) || "기타",
@@ -389,20 +308,6 @@ function saveSong(){
    db.child(editingKey).update(d);
  }
  $("dlg").close();
-}
-
-function downloadXlsx(){
- if(rows.length === 0){ alert("저장할 노래 목록이 없습니다."); return; }
- try {
-   let newWb = XLSX.utils.book_new(); const by={};
-   rows.forEach(x=>(by[x.sheet]??=[]).push(x));
-   Object.keys(by).forEach(name=>{
-     let sheetData = [[],[],[],["","날짜","가수/OST","제목","링크","썸네일","발송상태"]];
-     by[name].forEach(x=>sheetData.push(["", x.date||"", x.artist||"", x.title||"", x.link||"", x.thumb||"", x.sent?"발송":"미발송"]));
-     XLSX.utils.book_append_sheet(newWb, XLSX.utils.aoa_to_sheet(sheetData), name||"Sheet1");
-   });
-   XLSX.writeFile(newWb, "TODAY_MUSIC.xlsx");
- } catch(err) { alert("엑셀 저장 중 오류가 발생했습니다."); }
 }
 </script>
 </body>
