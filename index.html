@@ -157,6 +157,51 @@ function checkPassword() {
   }
 }
 
+function youtubeThumb(u){
+  let url = clean(u);
+  if(!url) return "";
+  let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|shorts\/|embed\/))([\w-]{11})/);
+  return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";
+}
+
+function parseDateString(dateStr) {
+  if(!dateStr) return new Date(0);
+  let nums = dateStr.match(/\d+/g);
+  if (!nums || nums.length < 3) return new Date(0);
+  return new Date(parseInt(nums[0],10), parseInt(nums[1],10)-1, parseInt(nums[2],10));
+}
+
+// 기존 DB의 잘못된 썸네일 및 발송상태 자동 교정 기능
+function fixExistingData(dataList) {
+  let updates = {};
+  let needFix = false;
+
+  dataList.forEach(item => {
+    let key = item._key;
+    let expectedThumb = youtubeThumb(item.link);
+    let itemDate = parseDateString(item.date);
+    
+    // 1. 썸네일 복구
+    if (!item.thumb && expectedThumb) {
+      updates[`${key}/thumb`] = expectedThumb;
+      item.thumb = expectedThumb;
+      needFix = true;
+    }
+    
+    // 2. 2026. 9. 1. 이전 곡 자동 '발송' 교정 (8월 포함 이전 시트곡)
+    let isBeforeBase = (itemDate.getTime() > 0 && itemDate < BASE_DATE) || (item.sheet && parseFloat(item.sheet) < 26.09);
+    if (isBeforeBase && !item.sent) {
+      updates[`${key}/sent`] = true;
+      item.sent = true;
+      needFix = true;
+    }
+  });
+
+  if (needFix) {
+    db.update(updates);
+  }
+}
+
 function initRealtimeListener() {
   db.on("value", snapshot => {
     const data = snapshot.val();
@@ -165,6 +210,7 @@ function initRealtimeListener() {
       Object.keys(data).forEach(key => {
         rows.push({ _key: key, ...data[key] });
       });
+      fixExistingData(rows); // 기존 저장 데이터 자동 교정 실행
     }
     buildMonths();
     render();
@@ -218,6 +264,8 @@ function processExcelFile(file){
               isSent = sentStr.includes("발송") && !sentStr.includes("미발송");
             } else if(itemDate.getTime() > 0) {
               isSent = itemDate < BASE_DATE;
+            } else if(parseFloat(sheetName) < 26.09) {
+              isSent = true;
             }
 
             db.push({
@@ -239,20 +287,6 @@ function processExcelFile(file){
     }
   };
   reader.readAsArrayBuffer(file);
-}
-
-function youtubeThumb(u){
-  let url = clean(u);
-  if(!url) return "";
-  let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|shorts\/|embed\/))([\w-]{11})/);
-  return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";
-}
-
-function parseDateString(dateStr) {
-  if(!dateStr) return new Date(0);
-  let nums = dateStr.match(/\d+/g);
-  if (!nums || nums.length < 3) return new Date(0);
-  return new Date(parseInt(nums[0],10), parseInt(nums[1],10)-1, parseInt(nums[2],10));
 }
 
 function autoSentByDate(){
@@ -288,8 +322,8 @@ function render(){
  v.sort((a,b)=>{
    if(s==="new") return parseDateString(b.date).getTime() - parseDateString(a.date).getTime();
    if(s==="old") return parseDateString(a.date).getTime() - parseDateString(a.date).getTime();
-   if(s==="artist") return a.artist.localeCompare(b.artist,"ko");
-   return a.title.localeCompare(b.title,"ko");
+   if(s==="artist") return (a.artist||"").localeCompare(b.artist||"","ko");
+   return (a.title||"").localeCompare(b.title||"","ko");
  });
 
  $("total").textContent=rows.length;$("sentTotal").textContent=rows.filter(x=>x.sent).length;$("notSent").textContent=rows.filter(x=>!x.sent).length;$("shown").textContent=v.length;
