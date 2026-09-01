@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TODAY MUSIC - 실시간 공유 (v2.0)</title>
+<title>TODAY MUSIC - 실시간 공유</title>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -69,7 +69,7 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <!-- 비밀번호 로그인 화면 -->
 <div id="authScreen" class="login-box">
   <h2>🔒 공유 보관함 접속</h2>
-  <p style="color:#855d78; font-size:14px;">설정된 비밀번호를 입력해주세요.</p>
+  <p style="color:#855d78; font-size:14px;">비밀번호를 입력해주세요.</p>
   <input type="password" id="passInput" placeholder="비밀번호 입력">
   <button class="primary" style="width:100%" onclick="checkPassword()">입장하기</button>
 </div>
@@ -98,7 +98,7 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <div class="tabs" id="tabs"></div>
 <div class="info">
   <span id="infoText">🔴 실시간 데이터 동기화 중...</span>
-  <button class="danger-ghost" onclick="cleanDuplicates()">중복 데이터 144개 자동 정돈하기</button>
+  <button class="danger-ghost" onclick="cleanDuplicates()">중복 데이터 정리하기</button>
 </div>
 <section class="grid" id="grid"></section>
 </main>
