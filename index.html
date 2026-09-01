@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TODAY MUSIC - 실시간 공유</title>
+<title>TODAY MUSIC - 실시간 자동 발송</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -110,7 +110,7 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <div class="form">
 <div class="row">
   <div><label>연 / 월</label><input id="fSheet" placeholder="26.09"></div>
-  <div><label>날짜</label><input id="fDate" placeholder="2026. 9. 1."></div>
+  <div><label>날짜</label><input id="fDate" placeholder="2026. 9. 1." oninput="autoSentCheck()"></div>
 </div>
 <div><label>가수 / OST</label><input id="fArtist" placeholder="가수명 입력"></div>
 <div><label>곡명 / 제목</label><input id="fTitle" placeholder="노래 제목 입력"></div>
@@ -140,6 +140,40 @@ const $=id=>document.getElementById(id);
 const clean=x=>String(x??"").trim();
 const esc=x=>clean(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+function parseDateString(dateStr) {
+  if(!dateStr) return new Date(0);
+  let nums = dateStr.match(/\d+/g);
+  if (!nums || nums.length < 3) return new Date(0);
+  let y = parseInt(nums[0], 10);
+  let m = parseInt(nums[1], 10) - 1;
+  let d = parseInt(nums[2], 10);
+  return new Date(y, m, d);
+}
+
+// 오늘 날짜 및 지나간 날짜 자동 발송 처리
+function checkAutoSent(dataList) {
+  let now = new Date();
+  let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let updates = {};
+  let updatedCount = 0;
+
+  dataList.forEach(item => {
+    if (!item.sent && item.date) {
+      let targetDate = parseDateString(item.date);
+      // 날짜가 파싱되고, 해당 날짜가 오늘이거나 오늘 이전이면 자동 발송 처리
+      if (targetDate.getTime() > 0 && targetDate <= today) {
+        updates[`${item._key}/sent`] = true;
+        item.sent = true;
+        updatedCount++;
+      }
+    }
+  });
+
+  if (updatedCount > 0) {
+    db.update(updates);
+  }
+}
+
 // 실시간 데이터 동기화
 function initRealtimeListener(){
   db.on("value", snapshot => {
@@ -149,6 +183,7 @@ function initRealtimeListener(){
       Object.keys(data).forEach(key => {
         rows.push({ _key: key, ...data[key] });
       });
+      checkAutoSent(rows); // 접속 시 날짜 검사 수행
       $("upload").style.display="none";
       $("main").style.display="block";
       buildMonths();
@@ -169,16 +204,6 @@ function youtubeThumb(u){
   return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";
 }
 
-function parseDateString(dateStr) {
-  if(!dateStr) return new Date(0);
-  let nums = dateStr.match(/\d+/g);
-  if (!nums || nums.length < 3) return new Date(0);
-  let y = parseInt(nums[0], 10);
-  let m = parseInt(nums[1], 10) - 1;
-  let d = parseInt(nums[2], 10);
-  return new Date(y, m, d);
-}
-
 function isUrl(s){return /^https?:\/\//i.test(clean(s))}
 
 function startDirect(){
@@ -197,6 +222,9 @@ function readFile(file){
    try{
     wb=XLSX.read(e.target.result,{type:"array",cellFormula:false});
     let newRows = [];
+    let now = new Date();
+    let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     wb.SheetNames.forEach(name=>{
       const ws=wb.Sheets[name];
       if(!ws || !ws["!ref"]) return;
@@ -212,7 +240,13 @@ function readFile(file){
        const link=linkCell?.l?.Target || (isUrl(linkCell?.v)?clean(linkCell.v):"");
        const textLink=clean(linkCell?.v);
        
-       let isSent = statusCell ? statusCell.includes("발송") && !statusCell.includes("미발송") : true;
+       let isSent = statusCell ? statusCell.includes("발송") && !statusCell.includes("미발송") : false;
+       
+       // 엑셀 읽어올 때 날짜 비교 자동 처리
+       let itemDate = parseDateString(date);
+       if (itemDate.getTime() > 0 && itemDate <= today) {
+         isSent = true;
+       }
 
        newRows.push({
          sheet:name,
@@ -227,7 +261,6 @@ function readFile(file){
       }
     });
 
-    // 엑셀 데이터를 데이터베이스로 파이프라인 업로드
     newRows.forEach(item => {
       db.push(item);
     });
@@ -288,13 +321,29 @@ function autoThumb(){
   if(yt) $("fThumb").value = yt;
 }
 
+// 모달 입력창에서 날짜 입력 시 자동 발송 처리
+function autoSentCheck(){
+  let dateVal = $("fDate").value;
+  let inputDate = parseDateString(dateVal);
+  let now = new Date();
+  let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if(inputDate.getTime() > 0){
+    if(inputDate <= today) {
+      $("fSent").value = "yes";
+    } else {
+      $("fSent").value = "no";
+    }
+  }
+}
+
 function openAdd(){
   editingKey=null;
   $("dlgTitle").textContent="노래 추가";
   $("fSheet").value=$("month").value || "26.09";
   $("fDate").value = "2026. 9. 1.";
   ["fArtist","fTitle","fLink","fThumb"].forEach(id=>$(id).value="");
-  $("fSent").value = "no";
+  autoSentCheck();
   $("dlg").showModal();
 }
 
