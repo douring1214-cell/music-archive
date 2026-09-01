@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TODAY MUSIC - 실시간 공유</title>
+<title>TODAY MUSIC - 실시간 공유 (v2.0)</title>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -11,7 +11,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:#fdf8fa;color:#2b2330;font-family:Arial,"Malgun Gothic",sans-serif}
 .app{max-width:1500px;margin:auto;padding:28px 22px 60px}
-.top{display:flex;justify-content:space-between;align-items:end;gap:16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .logo small{color:#b353a2;font-weight:800;letter-spacing:2px}
 .logo h1{margin:5px 0 0;font-size:44px;letter-spacing:-2px;color:#381d35}
 .logo h1 span{color:#bd3b8e}
@@ -20,6 +20,7 @@ button{cursor:pointer;border:0}
 .primary{background:linear-gradient(135deg,#9132be,#d63993);color:#fff;border-radius:10px;padding:12px 17px;font-weight:700;transition:0.2s;box-shadow:0 3px 10px rgba(189,59,142,0.25)}
 .primary:hover{opacity:0.92;transform:translateY(-1px)}
 .ghost{background:#fff;border:1px solid #eccbe3;color:#80386b;border-radius:10px;padding:11px 15px;font-weight:600}
+.danger-ghost{background:#fff;border:1px solid #f8cad6;color:#b82a4d;border-radius:10px;padding:9px 13px;font-weight:600;font-size:13px}
 .login-box{max-width:400px;margin:80px auto;padding:35px;background:#fff;border:1px solid #f5dbeb;border-radius:20px;text-align:center;box-shadow:0 10px 30px rgba(189,59,142,0.1)}
 .login-box h2{color:#381d35;margin-top:0}.login-box input{width:100%;margin:15px 0;text-align:center;font-size:18px;letter-spacing:4px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:18px 0}
@@ -32,7 +33,7 @@ input:focus,select:focus{border-color:#b353a2;box-shadow:0 0 0 2px rgba(179,83,1
 .tabs{display:flex;gap:7px;overflow:auto;padding-bottom:10px}
 .tab{white-space:nowrap;background:#fff;border:1px solid #eccbe3;color:#80386b;border-radius:99px;padding:8px 15px;font-size:14px;font-weight:600}
 .tab.active{background:linear-gradient(135deg,#9132be,#d63993);color:#fff;border-color:transparent;font-weight:bold;box-shadow:0 2px 8px rgba(189,59,142,0.3)}
-.info{color:#855d78;font-size:13px;margin:10px 2px 15px;font-weight:600}
+.info{display:flex;justify-content:space-between;align-items:center;color:#855d78;font-size:13px;margin:10px 2px 15px;font-weight:600}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:17px}
 .card{background:#fff;border:1px solid #f5dbeb;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(189,59,142,0.06)}
 .cover{height:185px;display:block;position:relative;background:linear-gradient(135deg,#f8e3f1,#ebd1f7);text-decoration:none;cursor:pointer}
@@ -95,7 +96,10 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 </div>
 
 <div class="tabs" id="tabs"></div>
-<div class="info" id="info">🔴 실시간 데이터 동기화 중...</div>
+<div class="info">
+  <span id="infoText">🔴 실시간 데이터 동기화 중...</span>
+  <button class="danger-ghost" onclick="cleanDuplicates()">중복 데이터 144개 자동 정돈하기</button>
+</div>
 <section class="grid" id="grid"></section>
 </main>
 
@@ -189,6 +193,31 @@ function fixExistingData(dataList) {
   }
 }
 
+function cleanDuplicates() {
+  if(!confirm("중복으로 들어간 데이터를 정돈하시겠습니까?")) return;
+  let seen = new Set();
+  let updates = {};
+  let deleteCount = 0;
+
+  rows.forEach(item => {
+    let uniqueKey = `${item.sheet}_${item.date}_${item.artist}_${item.title}`;
+    if(seen.has(uniqueKey)) {
+      updates[item._key] = null;
+      deleteCount++;
+    } else {
+      seen.add(uniqueKey);
+    }
+  });
+
+  if(deleteCount > 0) {
+    db.update(updates).then(() => {
+      alert(`정리 완료! 중복 데이터 ${deleteCount}개를 삭제했습니다.`);
+    });
+  } else {
+    alert("중복된 데이터가 없습니다.");
+  }
+}
+
 function initRealtimeListener() {
   db.on("value", snapshot => {
     const data = snapshot.val();
@@ -201,7 +230,7 @@ function initRealtimeListener() {
     }
     buildMonths();
     render();
-    $("info").textContent = `🟢 실시간 연결됨 · 총 ${rows.length}곡 저장되어 있음`;
+    $("infoText").textContent = `🟢 실시간 연결됨 · 총 ${rows.length}곡 저장되어 있음`;
   });
 }
 
@@ -222,7 +251,7 @@ function buildMonths(){
  const currentM = $("month").value;
  $("month").innerHTML='<option value="">전체 기간</option>'+ms.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
  $("month").value = currentM;
- $("tabs").innerHTML='<button class="tab '+(currentM===""?"active":"")+'" onclick="setMonth(this,\'\')">전체</button>'+ms.map(m=>`<button class="tab '+(currentM===m?"active":"")+'" onclick="setMonth(this,\'${esc(m)}\')">${esc(m)}</button>`).join("");
+ $("tabs").innerHTML='<button class="tab '+(currentM===""?"active":"")+'" onclick="setMonth(this,\'\')">전체</button>'+ms.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
 }
 
 function setMonth(b,m){$("month").value=m;document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
@@ -237,7 +266,7 @@ function render(){
  let s=$("sort").value;
  v.sort((a,b)=>{
    if(s==="new") return parseDateString(b.date).getTime() - parseDateString(a.date).getTime();
-   if(s==="old") return parseDateString(a.date).getTime() - parseDateString(b.date).getTime();
+   if(s==="old") return parseDateString(a.date).getTime() - parseDateString(a.date).getTime();
    if(s==="artist") return (a.artist||"").localeCompare(b.artist||"","ko");
    return (a.title||"").localeCompare(b.title||"","ko");
  });
@@ -250,7 +279,6 @@ function card(x){
  let realIndex = rows.indexOf(x);
  let th=x.thumb||youtubeThumb(x.link), image=th?`<img loading="lazy" src="${esc(th)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="noimg" style="display:none">♫</div>`:'<div class="noimg">♫</div>';
  
- // 썸네일/카드 이미지 클릭 시 유튜브 링크 이동
  let cover=x.link?`<a class="cover" href="${esc(x.link)}" target="_blank" rel="noopener" title="유튜브로 이동">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></a>`:`<div class="cover">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></div>`;
  
  return `<article class="card">${cover}<div class="body"><div class="title" title="${esc(x.title)}">${esc(x.title)}</div><div class="artist">${esc(x.artist||"가수 없음")}</div><div class="meta"><span class="date">${esc(x.date||x.sheet||"-")}</span><span class="actions">${x.link?`<a class="play" href="${esc(x.link)}" target="_blank">▶ 듣기</a>`:""}<button class="edit" onclick="editSong(${realIndex})">수정</button><button class="del" onclick="deleteSong(${realIndex})">삭제</button></span></div></div></article>`;
