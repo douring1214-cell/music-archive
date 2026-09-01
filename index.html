@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TODAY MUSIC</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fdf8fa;color:#2b2330;font-family:Arial,"Malgun Gothic",sans-serif}
+.app{max-width:1500px;margin:auto;padding:28px 22px 60px}
+.top{display:flex;justify-content:space-between;align-items:end;gap:16px}
+.logo small{color:#b353a2;font-weight:800;letter-spacing:2px}
+.logo h1{margin:5px 0 0;font-size:44px;letter-spacing:-2px;color:#381d35}
+.logo h1 span{color:#bd3b8e}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0}
+.primary{background:linear-gradient(135deg,#9132be,#d63993);color:#fff;border-radius:10px;padding:12px 17px;font-weight:700;transition:0.2s;box-shadow:0 3px 10px rgba(189,59,142,0.25)}
+.primary:hover{opacity:0.92;transform:translateY(-1px)}
+.ghost{background:#fff;border:1px solid #eccbe3;color:#80386b;border-radius:10px;padding:11px 15px;font-weight:600}
+.upload{margin:25px 0;padding:30px;border:2px dashed #e59bc7;border-radius:17px;background:#fff9fc;text-align:center}
+.upload h2{margin:0 0 7px;color:#381d35}
+.upload p{color:#855d78;margin:5px 0 16px;font-size:13px}
+.file{display:none}
+.filebtn{display:inline-block;background:linear-gradient(135deg,#9132be,#d63993);color:#fff;padding:12px 18px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(189,59,142,0.25)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:18px 0}
+.stat{background:#ffffff;border:1px solid #f5dbeb;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(189,59,142,0.04)}
+.stat small{color:#855d78;font-weight:600}
+.stat b{display:block;font-size:27px;margin-top:5px;color:#8c2378}
+.toolbar{display:grid;grid-template-columns:minmax(200px,2.5fr) 1fr 1fr 1fr auto;gap:9px;margin:17px 0}
+input,select{background:#fff;border:1px solid #eccbe3;border-radius:10px;padding:12px;outline:0;color:#2b2330}
+input:focus,select:focus{border-color:#b353a2;box-shadow:0 0 0 2px rgba(179,83,162,0.15)}
+.tabs{display:flex;gap:7px;overflow:auto;padding-bottom:10px}
+.tab{white-space:nowrap;background:#fff;border:1px solid #eccbe3;color:#80386b;border-radius:99px;padding:8px 15px;font-size:14px;font-weight:600}
+.tab.active{background:linear-gradient(135deg,#9132be,#d63993);color:#fff;border-color:transparent;font-weight:bold;box-shadow:0 2px 8px rgba(189,59,142,0.3)}
+.info{color:#855d78;font-size:13px;margin:10px 2px 15px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:17px}
+.card{background:#fff;border:1px solid #f5dbeb;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(189,59,142,0.06)}
+.cover{height:185px;display:block;position:relative;background:linear-gradient(135deg,#f8e3f1,#ebd1f7);text-decoration:none}
+.cover img{width:100%;height:100%;object-fit:cover}
+.noimg{height:100%;display:grid;place-items:center;color:#d49bc7;font-size:55px}
+.badge{position:absolute;right:10px;top:10px;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:800}
+.badge.sent{color:#781c62;background:#fae3f3;border:1px solid #eed0e7}
+.badge.no{color:#b82a4d;background:#ffe8ee;border:1px solid #f8cad6}
+.body{padding:14px}
+.title{font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#2b2330}
+.artist{color:#855d78;font-size:14px;margin:5px 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.date{font-size:12px;background:#fcf0f7;color:#80386b;border-radius:7px;padding:6px 8px;font-weight:600}
+.actions{display:flex;gap:4px}
+.play,.edit,.del{padding:7px 9px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:600}
+.play{background:#fae3f3;color:#781c62}
+.edit{background:#fcf0f7;color:#80386b;border:0}
+.del{background:#ffe8ee;color:#b82a4d;border:0}
+.empty{grid-column:1/-1;text-align:center;background:#fff;border:1px dashed #eccbe3;border-radius:14px;padding:65px;color:#855d78}
+dialog{border:0;border-radius:18px;width:min(520px,calc(100% - 28px));padding:0;box-shadow:0 20px 70px rgba(56,29,53,0.15)}
+dialog::backdrop{background:rgba(56,29,53,0.35)}
+.modal{padding:26px}
+.modal h2{margin:0 0 20px;font-size:22px;letter-spacing:-0.5px;color:#381d35}
+.form{display:grid;gap:13px}
+.form label{font-size:13px;font-weight:700;color:#80386b;margin-bottom:4px;display:block}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
+@media(max-width:850px){.stats{grid-template-columns:1fr 1fr}.toolbar{grid-template-columns:1fr 1fr}.toolbar input{grid-column:1/-1}}
+@media(max-width:560px){.app{padding:20px 13px}.top{align-items:flex-start;flex-direction:column}.logo h1{font-size:35px}.toolbar{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="top">
+  <div class="logo"><small>MUSIC ARCHIVE</small><h1>TODAY <span>MUSIC</span></h1></div>
+  <div><button class="ghost" onclick="resetApp()">전체 초기화</button> <button class="primary" onclick="downloadXlsx()">엑셀로 저장</button></div>
+</div>
+
+<section class="upload" id="upload">
+  <h2>노래 목록 관리</h2>
+  <p>기존 엑셀 파일을 불러오거나, 새로 노래를 직접 추가해보세요.</p>
+  <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+    <label class="filebtn" for="file">📁 엑셀 파일 선택</label>
+    <button class="primary" onclick="startDirect()">＋ 노래 직접 추가하기</button>
+  </div>
+  <input class="file" id="file" type="file" accept=".xlsx,.xls,.csv">
+</section>
+
+<section id="main" style="display:none">
+<div class="stats">
+ <div class="stat"><small>전체 노래</small><b id="total">0</b></div>
+ <div class="stat"><small>발송</small><b id="sentTotal">0</b></div>
+ <div class="stat"><small>미발송</small><b id="notSent">0</b></div>
+ <div class="stat"><small>현재 표시</small><b id="shown">0</b></div>
+</div>
+<div class="toolbar">
+ <input id="search" placeholder="곡명 · 가수 · 날짜 검색">
+ <select id="month"><option value="">전체 기간</option></select>
+ <select id="status"><option value="">전체 상태</option><option value="yes">발송</option><option value="no">미발송</option></select>
+ <select id="sort"><option value="new">최신 날짜순</option><option value="old">오래된 날짜순</option><option value="artist">가수순</option><option value="title">제목순</option></select>
+ <button class="primary" onclick="openAdd()">＋ 노래 추가</button>
+</div>
+<div class="tabs" id="tabs"></div>
+<div class="info" id="info"></div>
+<section class="grid" id="grid"></section>
+</section>
+</main>
+
+<dialog id="dlg"><div class="modal">
+<h2 id="dlgTitle">노래 추가</h2>
+<div class="form">
+<div class="row">
+  <div><label>연 / 월</label><input id="fSheet" placeholder="26.09"></div>
+  <div><label>날짜</label><input id="fDate" placeholder="2026. 9. 1."></div>
+</div>
+<div><label>가수 / OST</label><input id="fArtist" placeholder="가수명 입력"></div>
+<div><label>곡명 / 제목</label><input id="fTitle" placeholder="노래 제목 입력"></div>
+<div><label>노래 링크</label><input id="fLink" placeholder="유튜브 링크" oninput="autoThumb()"></div>
+<div><label>썸네일 링크</label><input id="fThumb" placeholder="자동 생성 또는 직접 입력"></div>
+<div><label>보낸 상태</label><select id="fSent"><option value="yes">발송</option><option value="no">미발송</option></select></div>
+</div><div class="foot"><button class="ghost" onclick="$('dlg').close()">취소</button><button class="primary" onclick="saveSong()">저장</button></div>
+</div></dialog>
+
+<script>
+let wb=null, rows=[], editing=null;
+const $=id=>document.getElementById(id);
+const clean=x=>String(x??"").trim();
+const esc=x=>clean(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function saveToStorage(){
+  try { localStorage.setItem("today_music_rows", JSON.stringify(rows)); } catch(e) { console.error(e); }
+}
+
+function loadFromStorage(){
+  let saved = localStorage.getItem("today_music_rows");
+  if(saved){
+    try {
+      let parsed = JSON.parse(saved);
+      if(Array.isArray(parsed) && parsed.length > 0){
+        rows = parsed;
+        $("upload").style.display="none";
+        $("main").style.display="block";
+        buildMonths();
+        render();
+        $("info").textContent = `저장된 목록 불러옴 · 총 ${rows.length}곡`;
+      }
+    } catch(e) { console.error(e); }
+  }
+}
+
+function youtubeThumb(u){
+  let url = clean(u);
+  if(!url) return "";
+  let m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|shorts\/|embed\/))([\w-]{11})/);
+  return m ? `https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg` : "";
+}
+
+function parseDateString(dateStr) {
+  if(!dateStr) return new Date(0);
+  let nums = dateStr.match(/\d+/g);
+  if (!nums || nums.length < 3) return new Date(0);
+  let y = parseInt(nums[0], 10);
+  let m = parseInt(nums[1], 10) - 1;
+  let d = parseInt(nums[2], 10);
+  return new Date(y, m, d);
+}
+
+function isUrl(s){return /^https?:\/\//i.test(clean(s))}
+
+function startDirect(){
+  $("upload").style.display="none";
+  $("main").style.display="block";
+  buildMonths();
+  render();
+  $("info").textContent="새 목록 작성 중";
+}
+
+$("file").addEventListener("change",e=>{if(e.target.files[0]) readFile(e.target.files[0])});
+
+function readFile(file){
+ const reader=new FileReader();
+ reader.onload=e=>{
+   try{
+    wb=XLSX.read(e.target.result,{type:"array",cellFormula:false});
+    rows=[];
+    wb.SheetNames.forEach(name=>{
+      const ws=wb.Sheets[name];
+      if(!ws || !ws["!ref"]) return;
+      const range=XLSX.utils.decode_range(ws["!ref"]);
+      for(let r=range.s.r;r<=range.e.r;r++){
+       const date=cell(ws,1,r), artist=cell(ws,2,r), title=cell(ws,3,r), linkCell=ws[XLSX.utils.encode_cell({c:4,r})], statusCell=cell(ws,6,r);
+       
+       if(!title) continue;
+       
+       const filterWords = ["제목", "곡명", "가수", "OST", "날짜", "링크", "썸네일", "발송", "상태", "리스트", "재생목록"];
+       if(filterWords.some(word => title.includes(word))) continue;
+
+       const link=linkCell?.l?.Target || (isUrl(linkCell?.v)?clean(linkCell.v):"");
+       const textLink=clean(linkCell?.v);
+       
+       let isSent = statusCell ? statusCell.includes("발송") && !statusCell.includes("미발송") : true;
+
+       rows.push({
+         sheet:name,
+         row:r+1,
+         date,
+         artist,
+         title,
+         link,
+         displayLink:textLink,
+         thumb: youtubeThumb(link),
+         sent: isSent
+       });
+      }
+    });
+    saveToStorage();
+    $("upload").style.display="none";$("main").style.display="block";buildMonths();render();
+    $("info").textContent=`${file.name} 불러옴 · ${rows.length}곡`;
+   }catch(err){alert("엑셀 파일을 읽는 중 오류가 발생했습니다.");console.error(err)}
+ };
+ reader.readAsArrayBuffer(file);
+}
+
+function cell(ws,c,r){let x=ws[XLSX.utils.encode_cell({c,r})];return clean(x?.v)}
+
+// 월/기간 정렬 최신순(내림차순) 수정 부분
+function buildMonths(){
+ const ms=[...new Set(rows.map(x=>x.sheet))].filter(Boolean).sort((a,b)=>b.localeCompare(a, undefined, {numeric: true}));
+ const currentM = $("month").value;
+ $("month").innerHTML='<option value="">전체 기간</option>'+ms.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
+ $("month").value = currentM;
+ $("tabs").innerHTML='<button class="tab '+(currentM===""?"active":"")+'" onclick="setMonth(this,\'\')">전체</button>'+ms.map(m=>`<button class="tab '+(currentM===m?"active":"")+'" onclick="setMonth(this,\'${esc(m)}\')">${esc(m)}</button>`).join("");
+}
+
+function setMonth(b,m){$("month").value=m;document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
+["search","month","status","sort"].forEach(id=>$(id).addEventListener("input",()=>{if(id==="month")syncTabs();render()}));
+function syncTabs(){document.querySelectorAll(".tab").forEach((b,i)=>b.classList.toggle("active",i===0?!$("month").value:b.textContent===$("month").value))}
+
+function render(){
+ let q=$("search").value.trim().toLowerCase(),m=$("month").value,st=$("status").value;
+ let v=rows.filter(x=>
+ (!q||[x.title,x.artist,x.date,x.sheet].join(" ").toLowerCase().includes(q))&&(!m||x.sheet===m)&&(!st||(st==="yes")===x.sent));
+ 
+ let s=$("sort").value;
+ v.sort((a,b)=>{
+   if(s==="new"){
+     return parseDateString(b.date).getTime() - parseDateString(a.date).getTime();
+   } else if(s==="old"){
+     return parseDateString(a.date).getTime() - parseDateString(b.date).getTime();
+   } else if(s==="artist"){
+     return a.artist.localeCompare(b.artist,"ko");
+   } else {
+     return a.title.localeCompare(b.title,"ko");
+   }
+ });
+
+ $("total").textContent=rows.length;$("sentTotal").textContent=rows.filter(x=>x.sent).length;$("notSent").textContent=rows.filter(x=>!x.sent).length;$("shown").textContent=v.length;
+ $("grid").innerHTML=v.map(card).join("")||'<div class="empty">조건에 맞는 노래가 없어요.</div>';
+}
+
+function card(x){
+ let realIndex = rows.indexOf(x);
+ let th=x.thumb||youtubeThumb(x.link), image=th?`<img loading="lazy" src="${esc(th)}" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><div class="noimg" style="display:none">♫</div>`:'<div class="noimg">♫</div>';
+ let cover=x.link?`<a class="cover" href="${esc(x.link)}" target="_blank" rel="noopener">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></a>`:`<div class="cover">${image}<span class="badge ${x.sent?'sent':'no'}">${x.sent?'발송 ✓':'미발송'}</span></div>`;
+ return `<article class="card">${cover}<div class="body"><div class="title" title="${esc(x.title)}">${esc(x.title)}</div><div class="artist">${esc(x.artist||"가수 없음")}</div><div class="meta"><span class="date">${esc(x.date||x.sheet||"-")}</span><span class="actions">${x.link?`<a class="play" href="${esc(x.link)}" target="_blank">▶ 듣기</a>`:""}<button class="edit" onclick="editSong(${realIndex})">수정</button><button class="del" onclick="deleteSong(${realIndex})">삭제</button></span></div></div></article>`;
+}
+
+function autoThumb(){
+  let link = $("fLink").value;
+  let yt = youtubeThumb(link);
+  if(yt) $("fThumb").value = yt;
+}
+
+function openAdd(){
+  editing=null;
+  $("dlgTitle").textContent="노래 추가";
+  $("fSheet").value=$("month").value || "26.09";
+  $("fDate").value = "2026. 9. 1.";
+  ["fArtist","fTitle","fLink","fThumb"].forEach(id=>$(id).value="");
+  $("fSent").value = "no";
+  $("dlg").showModal();
+}
+
+function editSong(i){
+  editing=i;
+  let x=rows[i];
+  $("dlgTitle").textContent="노래 수정";
+  $("fSheet").value=x.sheet;
+  $("fDate").value=x.date;
+  $("fArtist").value=x.artist;
+  $("fTitle").value=x.title;
+  $("fLink").value=x.link;
+  $("fThumb").value=x.thumb||youtubeThumb(x.link);
+  $("fSent").value=x.sent?"yes":"no";
+  $("dlg").showModal();
+}
+
+function deleteSong(i){
+  if(confirm(`'${rows[i].title}' 노래를 삭제하시겠습니까?`)){
+    rows.splice(i, 1);
+    saveToStorage();
+    buildMonths();
+    render();
+  }
+}
+
+function saveSong(){
+ let title = clean($("fTitle").value);
+ if(!title){
+   alert("노래 제목을 입력해 주세요.");
+   return;
+ }
+
+ let d={
+   sheet: clean($("fSheet").value) || "기타",
+   date: clean($("fDate").value),
+   artist: clean($("fArtist").value),
+   title: title,
+   link: clean($("fLink").value),
+   thumb: clean($("fThumb").value) || youtubeThumb($("fLink").value),
+   sent: $("fSent").value === "yes"
+ };
+
+ if(editing===null) {
+   rows.push({...d,row:0,displayLink:d.link}); 
+ } else {
+   rows[editing]={...rows[editing],...d};
+ }
+
+ saveToStorage();
+ $("dlg").close();
+ buildMonths();
+ render();
+}
+
+function resetApp(){
+  if(confirm("저장된 모든 노래 목록이 삭제되고 초기화됩니다. 진행하시겠습니까?")){
+    localStorage.removeItem("today_music_rows");
+    location.reload();
+  }
+}
+
+function downloadXlsx(){
+ if(rows.length === 0){
+   alert("저장할 노래 목록이 없습니다.");
+   return;
+ }
+ try {
+   let newWb = XLSX.utils.book_new();
+   const by={};
+   rows.forEach(x=>(by[x.sheet]??=[]).push(x));
+   Object.keys(by).forEach(name=>{
+     let sheetData = [
+       [],[],[],
+       ["","날짜","가수/OST","제목","링크","썸네일","발송상태"]
+     ];
+     by[name].forEach(x=>{
+       sheetData.push([
+         "",
+         x.date || "",
+         x.artist || "",
+         x.title || "",
+         x.link || "",
+         x.thumb || "",
+         x.sent ? "발송" : "미발송"
+       ]);
+     });
+     let ws = XLSX.utils.aoa_to_sheet(sheetData);
+     XLSX.utils.book_append_sheet(newWb, ws, name || "Sheet1");
+   });
+   XLSX.writeFile(newWb, "TODAY_MUSIC.xlsx");
+ } catch(err) {
+   alert("엑셀 저장 중 오류가 발생했습니다.");
+   console.error(err);
+ }
+}
+
+window.addEventListener("DOMContentLoaded", loadFromStorage);
+</script>
+</body>
+</html>
