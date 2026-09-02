@@ -110,7 +110,7 @@ dialog::backdrop{background:rgba(56,29,53,0.35)}
 <div class="form">
 <div class="row">
   <div><label>연 / 월</label><input id="fSheet" placeholder="26.09"></div>
-  <div><label>날짜</label><input id="fDate" placeholder="2026. 9. 1." oninput="autoSentCheck()"></div>
+  <div><label>날짜</label><input id="fDate" placeholder="26.09.03" oninput="autoSentCheck()"></div>
 </div>
 <div><label>가수 / OST</label><input id="fArtist" placeholder="가수명 입력"></div>
 <div><label>곡명 / 제목</label><input id="fTitle" placeholder="노래 제목 입력"></div>
@@ -140,11 +140,15 @@ const $=id=>document.getElementById(id);
 const clean=x=>String(x??"").trim();
 const esc=x=>clean(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+// 날짜 인식 로직 강화 (26.08.03, 2026.8.3, 26.8.3 등 모두 인식)
 function parseDateString(dateStr) {
   if(!dateStr) return new Date(0);
   let nums = dateStr.match(/\d+/g);
   if (!nums || nums.length < 3) return new Date(0);
+  
   let y = parseInt(nums[0], 10);
+  if (y < 100) y += 2000; // 26 -> 2026년으로 변환
+  
   let m = parseInt(nums[1], 10) - 1;
   let d = parseInt(nums[2], 10);
   return new Date(y, m, d);
@@ -242,7 +246,6 @@ function readFile(file){
        
        let isSent = statusCell ? statusCell.includes("발송") && !statusCell.includes("미발송") : false;
        
-       // 엑셀 읽어올 때 날짜 비교 자동 처리
        let itemDate = parseDateString(date);
        if (itemDate.getTime() > 0 && itemDate <= today) {
          isSent = true;
@@ -279,7 +282,7 @@ function buildMonths(){
  const currentM = $("month").value;
  $("month").innerHTML='<option value="">전체 기간</option>'+ms.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
  $("month").value = currentM;
- $("tabs").innerHTML='<button class="tab '+(currentM===""?"active":"")+'" onclick="setMonth(this,\'\')">전체</button>'+ms.map(m=>`<button class="tab '+(currentM===m?"active":"")+'" onclick="setMonth(this,\'${esc(m)}\')">${esc(m)}</button>`).join("");
+ $("tabs").innerHTML='<button class="tab '+(currentM===""?"active":"")+'" onclick="setMonth(this,\'\')">전체</button>'+ms.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
 }
 
 function setMonth(b,m){$("month").value=m;document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
@@ -321,7 +324,6 @@ function autoThumb(){
   if(yt) $("fThumb").value = yt;
 }
 
-// 모달 입력창에서 날짜 입력 시 자동 발송 처리
 function autoSentCheck(){
   let dateVal = $("fDate").value;
   let inputDate = parseDateString(dateVal);
@@ -341,7 +343,7 @@ function openAdd(){
   editingKey=null;
   $("dlgTitle").textContent="노래 추가";
   $("fSheet").value=$("month").value || "26.09";
-  $("fDate").value = "2026. 9. 1.";
+  $("fDate").value = "26.09.03";
   ["fArtist","fTitle","fLink","fThumb"].forEach(id=>$(id).value="");
   autoSentCheck();
   $("dlg").showModal();
